@@ -10,15 +10,50 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(gt)   # Not yet on CRAN
 load("AJPSReplication.RData")
+
+# It is good practice to save a permanent copy of the original data so that you
+# don't need to reload it each time. Does not matter in this case, because the
+# data is so small.
+
 orig <- x
-x <- as_tibble(orig)
+x <- as_tibble(orig) %>%
+  
+  # Not sure why these IDs come in as ordered factors, but characters would be
+  # better.
+  
+  mutate(ideval_n = as.character(ideval_n),
+         type_n   = as.character(type_n)) %>% 
+  
+  # Rename some variables
+  
+  rename(t_gender = MaleTarget,
+         e_gender = Male) %>% 
+  
+  # Need the 0/1 version of the ideology variable for both targets and
+  # evaluators.
+  
+  mutate(t_ideology = ifelse(IdeoTarget >= 4, "Conservative", "Liberal")) %>% 
+  mutate(e_ideology = ifelse(politicalIdeo >= 4, "Conservative", "Liberal")) %>% 
+  
+  # Create variables used in the regression. 
+  
+  mutate(same_ideologgy = (t_ideology == e_ideology)) %>% 
+  
+  # I am concerned that we are given a variable called MaleMaleTarget when the
+  # regression seems to be using a variable labeled "Same Sex."
+  
+  mutate(same_sex = (t_gender == e_gender)) 
+  
+  
 ```
 
 # Data Introduction
 
 The data set includes `r nrow(x)` rows. There were `r length(unique(x$type_n))` "target" individuals whose smell was evaluated by `r length(unique(x$ideval_n))` evaluators. The `r nrow(x)` rows is a result of `r length(unique(x$type_n))` times `r length(unique(x$ideval_n))`.  However, it *looks* like the target individuals *also* served as evaluators. I don't see this mentioned in the paper, but what else would explain why some of the values for `ideval_n` are also present in `type_n`? Without *any* codebook with clear variable explanations, it is tought to know. 
 
-The `r sum(is.na(x$attractive))` missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for `attractive` are spread not-exactly-evenly across all 21 targets.
+The `r sum(is.na(x$attractive))` missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for `attractive` are spread not-exactly-evenly across all 21 targets. This number of missing is consistent with the regression results, which only show 2,195 observations, but I am still curious about the reason for the missing values.
+
+There are two id variables: `ideval_n` identifies the evaluators and `type_n` identifies the targets. In the R data frame which I grabbed from the Dataverse, they come in as ordered factors. That is clearly wrong, but I doubt that this was an issue in the published paper.
 
 ## Targets
 
@@ -31,10 +66,9 @@ We can replicate the SI-1 table about targets perfectly.
 
 targets <- x %>% 
   slice(seq(1, 2499, by = 119)) %>% 
-  select(type_n, MaleTarget, IdeoTarget) %>% 
-  mutate(ideology = ifelse(IdeoTarget >= 4, "Conservative", "Liberal"))
+  select(type_n, t_gender, IdeoTarget, t_ideology)
 
-addmargins(table(targets$MaleTarget, targets$ideology))
+addmargins(table(targets$t_gender, targets$t_ideology))
 ```
 
 ## Evaluators
@@ -47,13 +81,15 @@ We are one off when trying to replicate the data for evaluators. We have one ext
 
 evaluators <- x %>% 
   slice(1:119) %>% 
-  select(ideval_n, Male, politicalIdeo) %>% 
-  mutate(ideology = ifelse(politicalIdeo >= 4, "Conservative", "Liberal"))
+  select(ideval_n, e_gender, politicalIdeo, e_ideology)
+  
 
-addmargins(table(evaluators$Male, evaluators$ideology))  
+addmargins(table(evaluators$e_gender, evaluators$e_ideology))  
 ```
 
 My *guess* is that this is a coding mistake in which the original paper drops an evaluator with a `politicalIdeo` value of 4, instead of classifying him as a Conservative. I doubt it matters.
+
+UPDATE: I contacted Dustin Tingley. He confirms that the published result is mistaken and that my numbers are correct.
 
 # Figure 1
 
@@ -68,7 +104,7 @@ ggplot(targets, aes(x = IdeoTarget)) +
 ```
 
 ```{r}
-ggplot(targets, aes(x = MaleTarget)) + 
+ggplot(targets, aes(x = t_gender)) + 
   geom_bar() +
   ggtitle("Target Sex") +
   ylab("Frequency")
@@ -83,7 +119,7 @@ ggplot(evaluators, aes(x = politicalIdeo)) +
 ```
 
 ```{r}
-ggplot(evaluators, aes(x = Male)) + 
+ggplot(evaluators, aes(x = e_gender)) + 
   geom_bar() +
   ggtitle("Evaluator Sex") +
   ylab("Frequency")
@@ -91,4 +127,6 @@ ggplot(evaluators, aes(x = Male)) +
 
 Looking by eyeball, these seem to match the published plots. Note the single evaluator with a `politicalIdeo` value of 4. I think that this individual is mistakenly dropped from Table SI-1 but is present in these figures. The `cowplot` package would be helpful in grouping these plots together. We might also mess around with the x-axis tick labels to see all 7 values. Not sure what the point is of making the gender bars more narrow. 
 
+
 # Table 1
+

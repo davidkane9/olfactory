@@ -1,6 +1,6 @@
 # Olfactory
 
-This repo replicates the analysis from:
+This repo explores the analysis from:
 
 McDermott, R., Tingley, D., & Hatemi, P. (2014). Assortative Mating Could Operate Through Olfactory Cues. American Journal of Political Science , 58 (4), 997-1005. [link](https://scholar.harvard.edu/dtingley/publications/assortative-mating-could-operate-through-olfactory-cues)
 
