@@ -1,0 +1,94 @@
+---
+title: "Olfactory"
+author: "David Kane"
+date: "1/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(gt)   # Not yet on CRAN
+load("AJPSReplication.RData")
+orig <- x
+x <- as_tibble(orig)
+```
+
+# Data Introduction
+
+The data set includes `r nrow(x)` rows. There were `r length(unique(x$type_n))` "target" individuals whose smell was evaluated by `r length(unique(x$ideval_n))` evaluators. The `r nrow(x)` rows is a result of `r length(unique(x$type_n))` times `r length(unique(x$ideval_n))`.  However, it *looks* like the target individuals *also* served as evaluators. I don't see this mentioned in the paper, but what else would explain why some of the values for `ideval_n` are also present in `type_n`? Without *any* codebook with clear variable explanations, it is tought to know. 
+
+The `r sum(is.na(x$attractive))` missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for `attractive` are spread not-exactly-evenly across all 21 targets.
+
+## Targets
+
+We can replicate the SI-1 table about targets perfectly.
+
+```{r}
+# The data for each target is repeated 119 times, one row for each evaluator.
+# So, to get information for just the targets, we just subset out each 119 rows.
+# I think that sex and ideology are the only things we know about targets.
+
+targets <- x %>% 
+  slice(seq(1, 2499, by = 119)) %>% 
+  select(type_n, MaleTarget, IdeoTarget) %>% 
+  mutate(ideology = ifelse(IdeoTarget >= 4, "Conservative", "Liberal"))
+
+addmargins(table(targets$MaleTarget, targets$ideology))
+```
+
+## Evaluators
+
+We are one off when trying to replicate the data for evaluators. We have one extra male Conservative.
+
+```{r}
+# The data for the evaluators is repeated for each new target. So, we can just
+# look at the first 119 rows of the original data frame.
+
+evaluators <- x %>% 
+  slice(1:119) %>% 
+  select(ideval_n, Male, politicalIdeo) %>% 
+  mutate(ideology = ifelse(politicalIdeo >= 4, "Conservative", "Liberal"))
+
+addmargins(table(evaluators$Male, evaluators$ideology))  
+```
+
+My *guess* is that this is a coding mistake in which the original paper drops an evaluator with a `politicalIdeo` value of 4, instead of classifying him as a Conservative. I doubt it matters.
+
+# Figure 1
+
+Here are some rough versions of the component parts of Figure 1.
+
+```{r}
+ggplot(targets, aes(x = IdeoTarget)) + 
+  geom_bar() +
+  ggtitle("Target Ideology") +
+  xlab("Liberal : Conservative") +
+  ylab("Frequency")
+```
+
+```{r}
+ggplot(targets, aes(x = MaleTarget)) + 
+  geom_bar() +
+  ggtitle("Target Sex") +
+  ylab("Frequency")
+```
+
+```{r}
+ggplot(evaluators, aes(x = politicalIdeo)) + 
+  geom_bar() +
+  ggtitle("Evaluator Ideology") +
+  xlab("Liberal : Conservative") +
+  ylab("Frequency")
+```
+
+```{r}
+ggplot(evaluators, aes(x = Male)) + 
+  geom_bar() +
+  ggtitle("Evaluator Sex") +
+  ylab("Frequency")
+```
+
+Looking by eyeball, these seem to match the published plots. Note the single evaluator with a `politicalIdeo` value of 4. I think that this individual is mistakenly dropped from Table SI-1 but is present in these figures. The `cowplot` package would be helpful in grouping these plots together. We might also mess around with the x-axis tick labels to see all 7 values. Not sure what the point is of making the gender bars more narrow. 
+
+# Table 1
