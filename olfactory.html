@@ -130,9 +130,9 @@ $(document).ready(function () {
 
 <div id="data-introduction" class="section level1">
 <h1>Data Introduction</h1>
-<p>The data set includes 2499 rows. There were 21 “target” individuals whose smell was evaluated by 119 evaluators. The 2499 rows is a result of 21 times 119. However, it <em>looks</em> like the target individuals <em>also</em> served as evaluators. I don’t see this mentioned in the paper, but what else would explain why some of the values for <code>ideval_n</code> are also present in <code>type_n</code>? Without <em>any</em> codebook with clear variable explanations, it is tought to know.</p>
+<p>The data set includes 2499 rows. There were 21 “target” individuals whose smell was evaluated by 119 evaluators. The 2499 rows is a result of 21 times 119. However, it <em>looks</em> like the target individuals <em>also</em> served as evaluators. I don’t see this mentioned in the paper, but what else would explain why some of the values for <code>e_id</code> are also present in <code>t_id</code>? Without <em>any</em> codebook with clear variable explanations, it is tought to know.</p>
 <p>The 304 missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for <code>attractive</code> are spread not-exactly-evenly across all 21 targets. This number of missing is consistent with the regression results, which only show 2,195 observations, but I am still curious about the reason for the missing values.</p>
-<p>There are two id variables: <code>ideval_n</code> identifies the evaluators and <code>type_n</code> identifies the targets. In the R data frame which I grabbed from the Dataverse, they come in as ordered factors. That is clearly wrong, but I doubt that this was an issue in the published paper.</p>
+<p>There are two id variables: <code>ideval_n</code> (which I rename to <code>e_id</code>) identifies the evaluators and <code>type_n</code> (which I rename as <code>t_id</code>) identifies the targets. In the R data frame which I grabbed from the Dataverse, they come in as ordered factors. That is clearly wrong, but I doubt that this was an issue in the published paper.</p>
 <div id="targets" class="section level2">
 <h2>Targets</h2>
 <p>We can replicate the SI-1 table about targets perfectly.</p>
@@ -165,6 +165,223 @@ $(document).ready(function () {
 </div>
 <div id="table-1" class="section level1">
 <h1>Table 1</h1>
+<p>Ought to use <code>stargazer</code> or <code>kableExtra</code> to format these regressions results nicely. For now, I just show the raw numbers. For now, I don’t bother with clustered standard errors.</p>
+<div id="model-1" class="section level2">
+<h2>Model 1</h2>
+<pre><code>## 
+## Call:
+## lm(formula = attractive ~ same_ideology + same_sex + e_ideology + 
+##     t_ideology + e_gender + t_gender + t_attractiveness + e_attractiveness, 
+##     data = x)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -3.9729 -0.7942 -0.0357  0.7451  3.9587 
+## 
+## Coefficients:
+##                     Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -3.562e+00  2.316e-01 -15.379   &lt;2e-16 ***
+## same_ideologyTRUE  8.529e-02  5.216e-02   1.635   0.1021    
+## same_sexTRUE      -1.436e-01  5.074e-02  -2.830   0.0047 ** 
+## e_ideologyLiberal  5.566e-03  5.402e-02   0.103   0.9179    
+## t_ideologyLiberal -1.962e-02  5.223e-02  -0.376   0.7073    
+## e_genderMale      -2.772e-05  5.234e-02  -0.001   0.9996    
+## t_genderMale      -1.742e-02  5.259e-02  -0.331   0.7405    
+## t_attractiveness   9.990e-01  4.045e-02  24.697   &lt;2e-16 ***
+## e_attractiveness   9.988e-01  4.630e-02  21.573   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 1.177 on 2186 degrees of freedom
+##   (304 observations deleted due to missingness)
+## Multiple R-squared:  0.3426, Adjusted R-squared:  0.3402 
+## F-statistic: 142.4 on 8 and 2186 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div id="model-2" class="section level2">
+<h2>Model 2</h2>
+<pre class="r"><code>summary(lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + e_ideology + t_ideology + 
+             e_gender + t_gender + e_attractiveness + t_attractiveness))</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = attractive ~ neg_abs_ideo_diff + same_sex + e_ideology + 
+##     t_ideology + e_gender + t_gender + e_attractiveness + t_attractiveness, 
+##     data = x)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -3.9793 -0.7928 -0.0366  0.7526  3.9931 
+## 
+## Coefficients:
+##                     Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)       -3.4813381  0.2329430 -14.945  &lt; 2e-16 ***
+## neg_abs_ideo_diff  0.0200733  0.0140338   1.430  0.15276    
+## same_sexTRUE      -0.1430117  0.0507539  -2.818  0.00488 ** 
+## e_ideologyLiberal  0.0036838  0.0539992   0.068  0.94562    
+## t_ideologyLiberal -0.0208840  0.0530619  -0.394  0.69393    
+## e_genderMale       0.0004368  0.0523438   0.008  0.99334    
+## t_genderMale      -0.0171887  0.0526023  -0.327  0.74387    
+## e_attractiveness   0.9987489  0.0463080  21.568  &lt; 2e-16 ***
+## t_attractiveness   1.0019587  0.0405089  24.734  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 1.177 on 2186 degrees of freedom
+##   (304 observations deleted due to missingness)
+## Multiple R-squared:  0.3424, Adjusted R-squared:   0.34 
+## F-statistic: 142.3 on 8 and 2186 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div id="model-3" class="section level2">
+<h2>Model 3</h2>
+<p>I can replicate Model 3 very closely, although I am not currently using clustered standard errors.</p>
+<pre class="r"><code>summary(lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + t_id + e_id))</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = attractive ~ neg_abs_ideo_diff + same_sex + t_id + 
+##     e_id, data = x)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -3.9781 -0.7958 -0.0415  0.7435  3.9729 
+## 
+## Coefficients:
+##                    Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)        3.290326   0.296493  11.097  &lt; 2e-16 ***
+## neg_abs_ideo_diff  0.022580   0.015228   1.483 0.138282    
+## same_sexTRUE      -0.142925   0.052201  -2.738 0.006235 ** 
+## t_idt110           0.549786   0.167079   3.291 0.001017 ** 
+## t_idt120           0.594788   0.167135   3.559 0.000381 ***
+## t_idt130           0.902316   0.168917   5.342 1.02e-07 ***
+## t_idt150           0.373650   0.167227   2.234 0.025564 *  
+## t_idt160           0.625916   0.170760   3.665 0.000253 ***
+## t_idt180           0.621171   0.167225   3.715 0.000209 ***
+## t_idt190           0.367125   0.167589   2.191 0.028590 *  
+## t_idt200          -0.081963   0.170576  -0.481 0.630919    
+## t_idt210           0.419939   0.167504   2.507 0.012251 *  
+## t_idt220           0.245631   0.167539   1.466 0.142768    
+## t_idt230          -0.248709   0.170576  -1.458 0.144979    
+## t_idt240          -0.934758   0.168461  -5.549 3.25e-08 ***
+## t_idt250          -0.574831   0.168835  -3.405 0.000675 ***
+## t_idt270           0.393023   0.168239   2.336 0.019581 *  
+## t_idt280           0.007879   0.168014   0.047 0.962602    
+## t_idt290          -0.641428   0.167820  -3.822 0.000136 ***
+## t_idt300           0.672194   0.168707   3.984 7.00e-05 ***
+## t_idt330           0.523434   0.168713   3.103 0.001945 ** 
+## t_idt340          -1.395838   0.167500  -8.333  &lt; 2e-16 ***
+## t_idt350          -1.234998   0.167502  -7.373 2.40e-13 ***
+## e_idEL105          0.056511   0.378214   0.149 0.881239    
+## e_idEL110          0.112012   0.378198   0.296 0.767129    
+## e_idEL115          0.867110   0.378214   2.293 0.021969 *  
+## e_idEL120          1.350107   0.378198   3.570 0.000365 ***
+## e_idEL125          0.581396   0.378214   1.537 0.124394    
+## e_idEL130          0.295682   0.378214   0.782 0.434431    
+## e_idEL135          0.175759   0.378376   0.465 0.642332    
+## e_idEL140         -0.370985   0.378214  -0.981 0.326764    
+## e_idEL145         -0.014717   0.378376  -0.039 0.968977    
+## e_idEL150          0.921535   0.378198   2.437 0.014908 *  
+## e_idEL155          0.509092   0.378376   1.345 0.178622    
+## e_idEL160          0.962349   0.378214   2.544 0.011017 *  
+## e_idEL165          0.788001   0.378394   2.082 0.037421 *  
+## e_idEL170          0.645144   0.378394   1.705 0.088354 .  
+## e_idEL175          0.937664   0.378376   2.478 0.013287 *  
+## e_idEL180          0.692763   0.378394   1.831 0.067275 .  
+## e_idEL185          0.771872   0.378214   2.041 0.041394 *  
+## e_idEL190          0.080521   0.378376   0.213 0.831499    
+## e_idEL195         -0.078465   0.378198  -0.207 0.835664    
+## e_idEL205          0.969154   0.378198   2.563 0.010461 *  
+## e_idEL210          0.302488   0.378198   0.800 0.423911    
+## e_idEL215          0.629015   0.378214   1.663 0.096440 .  
+## e_idEL220          1.588202   0.378198   4.199 2.79e-05 ***
+## e_idEL225          0.016774   0.378198   0.044 0.964629    
+## e_idEL230          0.110936   0.378198   0.293 0.769300    
+## e_idEL235          0.867110   0.378214   2.293 0.021969 *  
+## e_idEL240          0.223378   0.378376   0.590 0.555014    
+## e_idEL245         -0.602274   0.378198  -1.592 0.111429    
+## e_idEL250          0.778678   0.378198   2.059 0.039627 *  
+## e_idEL255          0.254869   0.378198   0.674 0.500449    
+## e_idEL260          0.771872   0.378214   2.041 0.041394 *  
+## e_idEL265          0.015698   0.378198   0.042 0.966895    
+## e_idEL270         -0.030846   0.378198  -0.082 0.935005    
+## e_idEL275          0.207250   0.378198   0.548 0.583756    
+## e_idEL280          0.683440   0.378198   1.807 0.070893 .  
+## e_idEL285          0.855190   0.382839   2.234 0.025602 *  
+## e_idEL290          0.731059   0.378198   1.933 0.053372 .  
+## e_idEL295          0.223378   0.378376   0.590 0.555014    
+## e_idEL300         -0.275747   0.378214  -0.729 0.466038    
+## e_idEL305         -0.894794   0.378214  -2.366 0.018081 *  
+## e_idEL315          0.867110   0.378214   2.293 0.021969 *  
+## e_idEL320          0.350107   0.378198   0.926 0.354698    
+## e_idEL325          0.509092   0.378376   1.345 0.178622    
+## e_idEL335          0.207250   0.378198   0.548 0.583756    
+## e_idEL340          1.532702   0.378214   4.052 5.26e-05 ***
+## e_idEL345          0.540583   0.378198   1.429 0.153051    
+## e_idEL350          0.683440   0.378198   1.807 0.070893 .  
+## e_idEL355          0.248063   0.378214   0.656 0.511975    
+## e_idEL360         -0.328470   0.406181  -0.809 0.418793    
+## e_idEL365          1.016774   0.378198   2.688 0.007236 ** 
+## e_idEL370          0.413854   0.378376   1.094 0.274186    
+## e_idEL375          0.873916   0.378198   2.311 0.020945 *  
+## e_idEL385         -0.364179   0.378198  -0.963 0.335695    
+## e_idEL390         -1.345924   0.382834  -3.516 0.000448 ***
+## e_idEL395          0.175759   0.378376   0.465 0.642332    
+## e_idEL700**       -0.354856   0.378394  -0.938 0.348459    
+## e_idER100          0.530551   0.378216   1.403 0.160835    
+## e_idER105          0.637972   0.378204   1.687 0.091784 .  
+## e_idER110         -0.174778   0.378198  -0.462 0.644034    
+## e_idER115          0.631166   0.378220   1.669 0.095313 .  
+## e_idER120          0.393070   0.378220   1.039 0.298804    
+## e_idER125          0.251643   0.378200   0.665 0.505888    
+## e_idER130         -0.178358   0.378220  -0.472 0.637282    
+## e_idER135          0.863885   0.378216   2.284 0.022466 *  
+## e_idER140         -0.224547   0.378200  -0.594 0.552760    
+## e_idER145         -0.209777   0.382783  -0.548 0.583731    
+## e_idER150         -1.136115   0.378216  -3.004 0.002698 ** 
+## e_idER155         -0.081690   0.378200  -0.216 0.829011    
+## e_idER160          0.806458   0.382844   2.106 0.035282 *  
+## e_idER165         -0.270016   0.378198  -0.714 0.475336    
+## e_idER170          1.352257   0.378204   3.575 0.000358 ***
+## e_idER175          0.346881   0.378200   0.917 0.359151    
+## e_idER180          1.059737   0.378220   2.802 0.005128 ** 
+## e_idER185         -0.659925   0.378216  -1.745 0.081162 .  
+## e_idER190          0.959123   0.378216   2.536 0.011289 *  
+## e_idER195          0.472728   0.382827   1.235 0.217033    
+## e_idER200          0.292456   0.378216   0.773 0.439462    
+## e_idER205          0.790151   0.378442   2.088 0.036928 *  
+## e_idER210          0.680215   0.378200   1.799 0.072235 .  
+## e_idER215          0.250213   0.378220   0.662 0.508331    
+## e_idER220          0.916880   0.378220   2.424 0.015428 *  
+## e_idER225          0.863885   0.378216   2.284 0.022466 *  
+## e_idER230          0.387694   0.378216   1.025 0.305455    
+## e_idER235          0.911504   0.378216   2.410 0.016039 *  
+## e_idER240          0.352257   0.378204   0.931 0.351758    
+## e_idER245          0.578170   0.378216   1.529 0.126497    
+## e_idER255          0.647294   0.378442   1.710 0.087338 .  
+## e_idER260          0.345451   0.378220   0.913 0.361160    
+## e_idER265          1.442119   0.378200   3.813 0.000141 ***
+## e_idt100           0.474982   0.382838   1.241 0.214862    
+## e_idt110           0.202472   0.382838   0.529 0.596952    
+## e_idt130           0.415210   0.382889   1.084 0.278308    
+## e_idt150           0.709218   0.393468   1.802 0.071616 .  
+## e_idt160          -0.131675   0.383221  -0.344 0.731181    
+## e_idt180           0.698895   0.382867   1.825 0.068082 .  
+## e_idt190          -0.646873   0.383114  -1.688 0.091474 .  
+## e_idt200           0.540077   0.383189   1.409 0.158859    
+## e_idt230           1.031740   0.383189   2.693 0.007149 ** 
+## e_idt250           1.185708   0.382770   3.098 0.001976 ** 
+## e_idt280           0.685165   0.383115   1.788 0.073857 .  
+## e_idt290           0.389524   0.382834   1.017 0.309047    
+## e_idt300           0.510850   0.382859   1.334 0.182252    
+## e_idt330           0.022306   0.387941   0.057 0.954155    
+## e_idt340          -0.694810   0.382839  -1.815 0.069686 .  
+## e_idt350           0.149052   0.387910   0.384 0.700837    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 1.21 on 2067 degrees of freedom
+##   (304 observations deleted due to missingness)
+## Multiple R-squared:  0.3427, Adjusted R-squared:  0.3023 
+## F-statistic: 8.485 on 127 and 2067 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Note how closely the key result, the coefficient and standard error for <code>neg_abs_ideo_diff</code> matches the published version.</p>
+</div>
 </div>
 
 

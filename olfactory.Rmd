@@ -19,41 +19,78 @@ orig <- x
 x <- as_tibble(orig) %>%
   
   # Not sure why these IDs come in as ordered factors, but characters would be
-  # better.
+  # better. My names are much less confusing.
   
-  mutate(ideval_n = as.character(ideval_n),
-         type_n   = as.character(type_n)) %>% 
+  mutate(e_id = as.character(ideval_n),
+         t_id = as.character(type_n)) %>% 
   
   # Rename some variables
   
   rename(t_gender = MaleTarget,
-         e_gender = Male) %>% 
+         e_gender = Male,
+         t_ideo_scale = IdeoTarget,
+         e_ideo_scale = politicalIdeo) %>% 
   
   # Need the 0/1 version of the ideology variable for both targets and
   # evaluators.
   
-  mutate(t_ideology = ifelse(IdeoTarget >= 4, "Conservative", "Liberal")) %>% 
-  mutate(e_ideology = ifelse(politicalIdeo >= 4, "Conservative", "Liberal")) %>% 
+  mutate(t_ideology = ifelse(t_ideo_scale >= 4, "Conservative", "Liberal")) %>% 
+  mutate(e_ideology = ifelse(e_ideo_scale >= 4, "Conservative", "Liberal")) %>% 
   
   # Create variables used in the regression. 
   
-  mutate(same_ideologgy = (t_ideology == e_ideology)) %>% 
+  mutate(same_ideology = (t_ideology == e_ideology)) %>% 
   
   # I am concerned that we are given a variable called MaleMaleTarget when the
   # regression seems to be using a variable labeled "Same Sex."
   
-  mutate(same_sex = (t_gender == e_gender)) 
+  mutate(same_sex = (t_gender == e_gender)) %>% 
+  
+  # I find this negative absolute measure confusing.
+  
+  mutate(neg_abs_ideo_diff = - abs(t_ideo_scale - e_ideo_scale)) %>% 
+  
+  # Rearrange for neatness.
+  
+  select(attractive, e_id, t_id, 
+         e_gender, t_gender, 
+         e_ideo_scale, t_ideo_scale,
+         e_ideology, t_ideology,
+         same_sex, same_ideology,
+         neg_abs_ideo_diff)
   
   
 ```
 
+
+```{r}
+# Models 1 and 2 use average target/evaluator attractiveness. I find this
+# confusing. First, only one of them is included in the provided data. Second,
+# although including fixed effects might be sensible, as in Model 3, I don't see
+# a reason why these means are useful predictors. Anyway, I calculate them here.
+# My t_attractiveness matches the provided mn_attractive well.
+
+t_x <- x %>% 
+  group_by(t_id) %>% 
+  summarize(t_attractiveness = mean(attractive, na.rm = TRUE))
+
+e_x <- x %>% 
+  group_by(e_id) %>% 
+  summarize(e_attractiveness = mean(attractive, na.rm = TRUE))
+
+x <- left_join(x, t_x, by = "t_id") %>% 
+  left_join( e_x, by = "e_id")
+
+```
+
+
 # Data Introduction
 
-The data set includes `r nrow(x)` rows. There were `r length(unique(x$type_n))` "target" individuals whose smell was evaluated by `r length(unique(x$ideval_n))` evaluators. The `r nrow(x)` rows is a result of `r length(unique(x$type_n))` times `r length(unique(x$ideval_n))`.  However, it *looks* like the target individuals *also* served as evaluators. I don't see this mentioned in the paper, but what else would explain why some of the values for `ideval_n` are also present in `type_n`? Without *any* codebook with clear variable explanations, it is tought to know. 
+The data set includes `r nrow(x)` rows. There were `r length(unique(x$t_id))` "target" individuals whose smell was evaluated by `r length(unique(x$e_id))` evaluators. The `r nrow(x)` rows is a result of `r length(unique(x$t_id))` times `r length(unique(x$e_id))`.  However, it *looks* like the target individuals *also* served as evaluators. I don't see this mentioned in the paper, but what else would explain why some of the values for `e_id` are also present in `t_id`? Without *any* codebook with clear variable explanations, it is tought to know. 
 
 The `r sum(is.na(x$attractive))` missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for `attractive` are spread not-exactly-evenly across all 21 targets. This number of missing is consistent with the regression results, which only show 2,195 observations, but I am still curious about the reason for the missing values.
 
-There are two id variables: `ideval_n` identifies the evaluators and `type_n` identifies the targets. In the R data frame which I grabbed from the Dataverse, they come in as ordered factors. That is clearly wrong, but I doubt that this was an issue in the published paper.
+There are two id variables: `ideval_n` (which I rename to `e_id`) identifies the evaluators and `type_n` (which I rename as `t_id`) identifies the targets. In the R data frame which I grabbed from the Dataverse, they come in as ordered factors. That is clearly wrong, but I doubt that this was an issue in the published paper.
 
 ## Targets
 
@@ -66,7 +103,7 @@ We can replicate the SI-1 table about targets perfectly.
 
 targets <- x %>% 
   slice(seq(1, 2499, by = 119)) %>% 
-  select(type_n, t_gender, IdeoTarget, t_ideology)
+  select(t_id, t_gender, t_ideo_scale, t_ideology)
 
 addmargins(table(targets$t_gender, targets$t_ideology))
 ```
@@ -81,7 +118,7 @@ We are one off when trying to replicate the data for evaluators. We have one ext
 
 evaluators <- x %>% 
   slice(1:119) %>% 
-  select(ideval_n, e_gender, politicalIdeo, e_ideology)
+  select(e_id, e_gender, e_ideo_scale, e_ideology)
   
 
 addmargins(table(evaluators$e_gender, evaluators$e_ideology))  
@@ -96,7 +133,7 @@ UPDATE: I contacted Dustin Tingley. He confirms that the published result is mis
 Here are some rough versions of the component parts of Figure 1.
 
 ```{r}
-ggplot(targets, aes(x = IdeoTarget)) + 
+ggplot(targets, aes(x = t_ideo_scale)) + 
   geom_bar() +
   ggtitle("Target Ideology") +
   xlab("Liberal : Conservative") +
@@ -111,7 +148,7 @@ ggplot(targets, aes(x = t_gender)) +
 ```
 
 ```{r}
-ggplot(evaluators, aes(x = politicalIdeo)) + 
+ggplot(evaluators, aes(x = e_ideo_scale)) + 
   geom_bar() +
   ggtitle("Evaluator Ideology") +
   xlab("Liberal : Conservative") +
@@ -130,3 +167,33 @@ Looking by eyeball, these seem to match the published plots. Note the single eva
 
 # Table 1
 
+Ought to use `stargazer` or `kableExtra` to format these regressions results nicely. For now, I just show the raw numbers. For now, I don't bother with clustered standard errors.
+
+
+## Model 1
+
+```{r}
+summary(lm(data = x, attractive ~ same_ideology + same_sex + 
+             e_ideology + t_ideology +
+             e_gender   + t_gender +
+             t_attractiveness + e_attractiveness))
+```
+
+
+## Model 2
+
+```{r echo = TRUE}
+summary(lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + e_ideology + t_ideology + 
+             e_gender + t_gender + e_attractiveness + t_attractiveness))
+```
+
+
+## Model 3
+
+I can replicate Model 3 very closely, although I am not currently using clustered standard errors.
+
+```{r echo = TRUE}
+summary(lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + t_id + e_id))
+```
+
+Note how closely the key result, the coefficient and standard error for `neg_abs_ideo_diff` matches the published version.
