@@ -10,7 +10,6 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
-library(gt)   # Not yet on CRAN
 library(cowplot)
 library(stargazer)
 load("AJPSReplication.RData")
