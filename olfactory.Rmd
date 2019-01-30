@@ -2,13 +2,17 @@
 title: "Olfactory"
 author: "David Kane"
 date: "1/26/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(gt)   # Not yet on CRAN
+library(cowplot)
+library(stargazer)
 load("AJPSReplication.RData")
 
 # It is good practice to save a permanent copy of the original data so that you
@@ -78,6 +82,9 @@ e_x <- x %>%
   group_by(e_id) %>% 
   summarize(e_attractiveness = mean(attractive, na.rm = TRUE))
 
+# Isn't there an easy of adding summary data like this to a tibble? This
+# completes the data set up.
+
 x <- left_join(x, t_x, by = "t_id") %>% 
   left_join( e_x, by = "e_id")
 
@@ -86,15 +93,16 @@ x <- left_join(x, t_x, by = "t_id") %>%
 
 # Data Introduction
 
-The data set includes `r nrow(x)` rows. There were `r length(unique(x$t_id))` "target" individuals whose smell was evaluated by `r length(unique(x$e_id))` evaluators. The `r nrow(x)` rows is a result of `r length(unique(x$t_id))` times `r length(unique(x$e_id))`.  However, it *looks* like the target individuals *also* served as evaluators. I don't see this mentioned in the paper, but what else would explain why some of the values for `e_id` are also present in `t_id`? Without *any* codebook with clear variable explanations, it is tought to know. 
-
-The `r sum(is.na(x$attractive))` missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for `attractive` are spread not-exactly-evenly across all 21 targets. This number of missing is consistent with the regression results, which only show 2,195 observations, but I am still curious about the reason for the missing values.
-
 There are two id variables: `ideval_n` (which I rename to `e_id`) identifies the evaluators and `type_n` (which I rename as `t_id`) identifies the targets. In the R data frame which I grabbed from the Dataverse, they come in as ordered factors. That is clearly wrong, but I doubt that this was an issue in the published paper.
+
+The data set includes `r nrow(x)` rows. There were `r length(unique(x$t_id))` "target" individuals whose smell was evaluated by `r length(unique(x$e_id))` evaluators. The `r nrow(x)` rows is a result of `r length(unique(x$t_id))` times `r length(unique(x$e_id))`.  However, it *looks* like the target individuals *also* served as evaluators. I don't see this mentioned in the paper, but what else would explain why some of the values for `e_id` are also present in `t_id`? Without *any* codebook with clear variable explanations, it is tough to know. 
+
+The `r sum(is.na(x$attractive))` missing values for the response variable (a measure of attractiveness) are a bit of a mystery. The paper discusses dropping one target because he wore the pads for two days instead of one, but my sense is that none of his data should be here. The missing values for `attractive` are spread not-exactly-evenly across all 21 targets. This number of missing is consistent with the regression results, which only show 2,195 observations, but I am still curious about the reason for the missing values. A proper forensic examination would look more closely at this.
+
 
 ## Targets
 
-We can replicate the SI-1 table about targets perfectly.
+We can replicate the SI-1 table about targets perfectly. Ought to explore the `gt` package in order to make these look nicer.
 
 ```{r}
 # The data for each target is repeated 119 times, one row for each evaluator.
@@ -105,8 +113,9 @@ targets <- x %>%
   slice(seq(1, 2499, by = 119)) %>% 
   select(t_id, t_gender, t_ideo_scale, t_ideology)
 
-addmargins(table(targets$t_gender, targets$t_ideology))
+z <- addmargins(table(targets$t_gender, targets$t_ideology))
 ```
+
 
 ## Evaluators
 
@@ -132,34 +141,33 @@ UPDATE: I contacted Dustin Tingley. He confirms that the published result is mis
 
 Here are some rough versions of the component parts of Figure 1.
 
-```{r}
-ggplot(targets, aes(x = t_ideo_scale)) + 
+```{r fig1, fig.cap = "*Note*: The sexual categories are binary, and the ideological ones exist on a 7-point scale ranging from *very liberal* (1) to *very conservative* (7)."}
+
+p1 <- ggplot(targets, aes(x = t_ideo_scale)) + 
   geom_bar() +
   ggtitle("Target Ideology") +
   xlab("Liberal : Conservative") +
   ylab("Frequency")
-```
 
-```{r}
-ggplot(targets, aes(x = t_gender)) + 
+p2 <- ggplot(targets, aes(x = t_gender)) + 
   geom_bar() +
   ggtitle("Target Sex") +
-  ylab("Frequency")
-```
+  ylab("Frequency") +
+  theme(axis.title.x = element_blank())
 
-```{r}
-ggplot(evaluators, aes(x = e_ideo_scale)) + 
+p3 <- ggplot(evaluators, aes(x = e_ideo_scale)) + 
   geom_bar() +
   ggtitle("Evaluator Ideology") +
   xlab("Liberal : Conservative") +
   ylab("Frequency")
-```
 
-```{r}
-ggplot(evaluators, aes(x = e_gender)) + 
+p4 <- ggplot(evaluators, aes(x = e_gender)) + 
   geom_bar() +
   ggtitle("Evaluator Sex") +
-  ylab("Frequency")
+  ylab("Frequency") +
+  theme(axis.title.x = element_blank())
+
+cowplot::plot_grid(p1, p3, p2, p4, nrow = 2)
 ```
 
 Looking by eyeball, these seem to match the published plots. Note the single evaluator with a `politicalIdeo` value of 4. I think that this individual is mistakenly dropped from Table SI-1 but is present in these figures. The `cowplot` package would be helpful in grouping these plots together. We might also mess around with the x-axis tick labels to see all 7 values. Not sure what the point is of making the gender bars more narrow. 
@@ -167,33 +175,38 @@ Looking by eyeball, these seem to match the published plots. Note the single eva
 
 # Table 1
 
-Ought to use `stargazer` or `kableExtra` to format these regressions results nicely. For now, I just show the raw numbers. For now, I don't bother with clustered standard errors.
+For now, I don't bother with clustered standard errors.
 
-
-## Model 1
-
-```{r}
-summary(lm(data = x, attractive ~ same_ideology + same_sex + 
+```{r regressions, echo=TRUE}
+mod_1 <- lm(data = x, attractive ~ same_ideology + same_sex + 
              e_ideology + t_ideology +
              e_gender   + t_gender +
-             t_attractiveness + e_attractiveness))
+             e_attractiveness + t_attractiveness)
+
+
+mod_2 <- lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + 
+              e_ideo_scale + t_ideo_scale + 
+              e_gender + t_gender + 
+              e_attractiveness + t_attractiveness)
+
+mod_3 <- lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + t_id + e_id)
+```
+
+```{r stargazer, results='asis', fig.cap="*Note*: Standard errors are not clustered, unlike the published version."}
+stargazer(mod_1, mod_2, mod_3,
+          header = FALSE,
+          title = "Odor Attraction as a Function of Ideological Similarity",
+          style = "ajps",
+          keep = c("same_ideology", "neg_abs_ideo_diff", "same_sex",
+                   "e_ideology", "t_ideology", 
+                   "e_ideo_scale", "t_ideo_scale",
+                   "e_gender", "t_gender",
+                   "t_attractiveness", "e_attractiveness"),
+          covariate.labels = c("Same Ideology", "-Abs. Ideology Diff.", "Same Sex",
+                               "Conservative Eval.", "Conservative Target", "Ideology of Eval.",
+                               "Ideology of Target", "Male Evaluator", "Male Target",
+                               "Avg. Target Attract", "Avg Eval. Attract"))
 ```
 
 
-## Model 2
-
-```{r echo = TRUE}
-summary(lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + e_ideology + t_ideology + 
-             e_gender + t_gender + e_attractiveness + t_attractiveness))
-```
-
-
-## Model 3
-
-I can replicate Model 3 very closely, although I am not currently using clustered standard errors.
-
-```{r echo = TRUE}
-summary(lm(data = x, attractive ~ neg_abs_ideo_diff + same_sex + t_id + e_id))
-```
-
-Note how closely the key result, the coefficient and standard error for `neg_abs_ideo_diff` matches the published version.
+Note how closely the key result, the coefficient and standard error for `neg_abs_ideo_diff` matches the published version in Model 3.
